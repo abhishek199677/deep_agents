@@ -1,0 +1,60 @@
+# Environment & Secrets
+.env
+.env.local
+.env.production
+*.key
+*.pem
+**/service-account.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.python-version
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+.docker/
+
+# Logs
+*.log
+logs/
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Streamlit local
+.streamlit/
+
+# Agent runtime artifacts
+/tmp/
+/large_tool_results/
+
+# Frontend / Node (build artifacts + dependencies)
+node_modules/
+.next/
+out/

@@ -1,0 +1,13 @@
+.env
+.env.*
+.git
+__pycache__/
+*.py[cod]
+*.egg-info/
+.gitignore
+.ipynb_checkpoints/
+.vscode/
+.idea/
+.DS_Store
+*.md
+notebooks/
