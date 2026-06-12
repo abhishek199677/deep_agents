@@ -89,21 +89,26 @@ async def build_agent(
         },
     ]
 
-    if _has_postgres() and settings.database_url.startswith("postgresql"):
-        from psycopg_pool import AsyncConnectionPool
-        from langgraph.checkpoint.postgres import PostgresSaver
-        from langgraph.store.postgres import PostgresStore
+    if _has_postgres() and settings.database_url.startswith("postgresql") and settings.app_env != "development":
+        try:
+            from psycopg_pool import AsyncConnectionPool
+            from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+            from langgraph.store.postgres.aio import AsyncPostgresStore
 
-        pool = AsyncConnectionPool(
-            conninfo=settings.database_url.replace("+psycopg", ""),
-            max_size=10,
-        )
-        checkpointer = PostgresSaver(async_connection_pool=pool)
-        store = PostgresStore(async_connection_pool=pool)
-        backend = StoreBackend(
-            store=store,
-            namespace=lambda rt: ("users", user_id),
-        )
+            pool = AsyncConnectionPool(
+                conninfo=settings.database_url.replace("+psycopg", ""),
+                max_size=10,
+            )
+            checkpointer = AsyncPostgresSaver(pool)
+            store = AsyncPostgresStore(pool)
+            backend = StoreBackend(
+                store=store,
+                namespace=lambda rt: ("users", user_id),
+            )
+        except Exception:
+            checkpointer = MemorySaver()
+            store = InMemoryStore()
+            backend = StateBackend()
     else:
         checkpointer = MemorySaver()
         store = InMemoryStore()

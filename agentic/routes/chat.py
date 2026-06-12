@@ -2,14 +2,17 @@ from __future__ import annotations
 
 import json
 import uuid
+import logging
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from langchain_core.messages import HumanMessage
 
-from agentic.auth import get_current_user
+from agentic.auth import get_current_user, get_current_user_ws
 from agentic.rate_limit import check_rate_limit
 from agentic.schemas import ChatRequest, AgentStep
 from agentic.agent_factory import build_agent
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/v1", tags=["chat"])
 
@@ -50,7 +53,7 @@ async def chat_websocket(
     try:
         data = await websocket.receive_json()
         message = data.get("message", "")
-        user_id = data.get("user_id", "anonymous")
+        user_id = await get_current_user_ws(websocket)
         model = data.get("model", None)
     except Exception:
         await websocket.close(code=1003)
@@ -116,8 +119,9 @@ async def chat_websocket(
     except WebSocketDisconnect:
         pass
     except Exception as exc:
+        logger.exception("WebSocket streaming error for thread %s", thread_id)
         await websocket.send_json(
-            AgentStep(type="error", content=str(exc)).model_dump()
+            AgentStep(type="error", content="An internal error occurred").model_dump()
         )
     finally:
         await websocket.close()

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -11,10 +13,13 @@ from agentic.logging_config import configure_logging
 from agentic.routes.health import router as health_router
 from agentic.routes.chat import router as chat_router
 
+logger = logging.getLogger(__name__)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
+    settings.validate_production()
     yield
 
 
@@ -37,6 +42,7 @@ app.add_middleware(
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled exception on %s %s", request.method, request.url.path)
     return JSONResponse(
         status_code=500,
         content={"detail": "Internal server error", "code": "INTERNAL_ERROR"},

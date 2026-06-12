@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import sys
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Literal
 
@@ -36,6 +39,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expiry_hours: int = 72
 
+    # Sentry
+    sentry_dsn: str = ""
+
     # Rate limiting
     rate_limit_per_minute: int = 30
     rate_limit_per_day: int = 500
@@ -55,5 +61,34 @@ class Settings(BaseSettings):
             return "groq:qwen/qwen3-32b"
         return "openai:gpt-4.1"
 
+    def validate_production(self) -> None:
+        if self.app_env != "production":
+            return
+        errors = []
+        if not self.jwt_secret or self.jwt_secret == "change-me":
+            errors.append("JWT_SECRET must be set to a strong random value in production")
+        if not self.openai_api_key and not self.groq_api_key and not self.anthropic_api_key:
+            errors.append("At least one LLM API key (OPENAI_API_KEY, GROQ_API_KEY, ANTHROPIC_API_KEY) must be set in production")
+        if self.sentry_dsn:
+            try:
+                import sentry_sdk
+                sentry_sdk.init(
+                    dsn=self.sentry_dsn,
+                    environment=self.app_env,
+                    traces_sample_rate=0.1,
+                )
+            except Exception:
+                pass
+        if errors:
+            for err in errors:
+                print(f"[CRITICAL] {err}", file=sys.stderr)
+            sys.exit(1)
+
 
 settings = Settings()
+
+# Export to os.environ so libraries (langchain-openai, etc.) can find them
+for key in ("openai_api_key", "groq_api_key", "anthropic_api_key", "tavily_api_key"):
+    value = getattr(settings, key, "")
+    if value:
+        os.environ.setdefault(key.upper(), value)

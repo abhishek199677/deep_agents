@@ -3,14 +3,12 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, WebSocket
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from agentic.config import settings
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer(auto_error=False)
 
 
@@ -41,9 +39,32 @@ def verify_token(token: str) -> dict:
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(security),
 ) -> str:
-    if not settings.jwt_secret or settings.jwt_secret == "change-me":
-        return "anonymous"
+    if settings.app_env == "development":
+        if credentials is None:
+            return "anonymous"
+        payload = verify_token(credentials.credentials)
+        return payload.get("sub", "anonymous")
+
     if credentials is None:
-        return "anonymous"
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header required",
+        )
     payload = verify_token(credentials.credentials)
-    return payload.get("sub", "anonymous")
+    return payload.get("sub")
+
+
+async def get_current_user_ws(websocket: WebSocket) -> str:
+    if settings.app_env == "development":
+        return "anonymous"
+
+    token = websocket.headers.get("authorization", "").removeprefix("Bearer ")
+    if not token:
+        await websocket.close(code=4001, reason="Missing authorization token")
+        return "anonymous"
+    try:
+        payload = verify_token(token)
+        return payload.get("sub")
+    except HTTPException:
+        await websocket.close(code=4001, reason="Invalid or expired token")
+        return "anonymous"
