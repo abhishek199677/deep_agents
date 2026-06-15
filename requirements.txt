@@ -11,6 +11,7 @@ langgraph-checkpoint-postgres==3.1.0
 
 # Web search
 tavily-python==0.7.26
+langchain-openai==0.3.8
 
 # Database
 asyncpg==0.31.0
