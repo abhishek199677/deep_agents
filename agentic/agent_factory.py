@@ -1,20 +1,15 @@
 from __future__ import annotations
 
-import importlib
 from typing import Literal
 
 from deepagents import create_deep_agent
-from deepagents.backends import FilesystemBackend, StateBackend, StoreBackend
+from deepagents.backends import StateBackend
 from langgraph.store.memory import InMemoryStore
 from langgraph.checkpoint.memory import MemorySaver
 from tavily import TavilyClient
 from pydantic import BaseModel, Field
 
 from agentic.config import settings
-
-
-def _has_postgres() -> bool:
-    return importlib.util.find_spec("psycopg") is not None
 
 
 class ResearchFindings(BaseModel):
@@ -89,40 +84,9 @@ async def build_agent(
         },
     ]
 
-    if _has_postgres() and settings.database_url.startswith("postgresql"):
-        try:
-            from psycopg_pool import AsyncConnectionPool
-            from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
-            from langgraph.store.postgres.aio import AsyncPostgresStore
-
-            pool = AsyncConnectionPool(
-                conninfo=settings.database_url.replace("+psycopg", ""),
-                max_size=10,
-            )
-            checkpointer = AsyncPostgresSaver(pool)
-            store = AsyncPostgresStore(pool)
-
-            # Try setting up tables; fall back to memory if they don't exist
-            try:
-                await checkpointer.setup()
-                await store.setup()
-            except Exception:
-                checkpointer = MemorySaver()
-                store = InMemoryStore()
-                backend = StateBackend()
-            else:
-                backend = StoreBackend(
-                    store=store,
-                    namespace=lambda rt: ("users", user_id),
-                )
-        except Exception:
-            checkpointer = MemorySaver()
-            store = InMemoryStore()
-            backend = StateBackend()
-    else:
-        checkpointer = MemorySaver()
-        store = InMemoryStore()
-        backend = StateBackend()
+    checkpointer = MemorySaver()
+    store = InMemoryStore()
+    backend = StateBackend()
 
     agent = create_deep_agent(
         model=model,
