@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: deep-agents-api
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn agentic.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
