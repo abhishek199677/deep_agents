@@ -89,7 +89,7 @@ async def build_agent(
         },
     ]
 
-    if _has_postgres() and settings.database_url.startswith("postgresql") and settings.app_env != "development":
+    if _has_postgres() and settings.database_url.startswith("postgresql"):
         try:
             from psycopg_pool import AsyncConnectionPool
             from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
@@ -101,10 +101,20 @@ async def build_agent(
             )
             checkpointer = AsyncPostgresSaver(pool)
             store = AsyncPostgresStore(pool)
-            backend = StoreBackend(
-                store=store,
-                namespace=lambda rt: ("users", user_id),
-            )
+
+            # Try setting up tables; fall back to memory if they don't exist
+            try:
+                await checkpointer.setup()
+                await store.setup()
+            except Exception:
+                checkpointer = MemorySaver()
+                store = InMemoryStore()
+                backend = StateBackend()
+            else:
+                backend = StoreBackend(
+                    store=store,
+                    namespace=lambda rt: ("users", user_id),
+                )
         except Exception:
             checkpointer = MemorySaver()
             store = InMemoryStore()
