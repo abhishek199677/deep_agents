@@ -55,11 +55,7 @@ class Settings(BaseSettings):
 
     @property
     def default_model(self) -> str:
-        if self.openai_api_key:
-            return "openai:gpt-4.1"
-        if self.groq_api_key:
-            return "groq:qwen/qwen3-32b"
-        return "openai:gpt-4.1"
+        return "openai:gpt-4o-mini"
 
     def validate_production(self) -> None:
         if self.app_env != "production":
